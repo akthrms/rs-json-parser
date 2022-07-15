@@ -8,7 +8,7 @@ use nom::{
     sequence::{delimited, tuple},
     IResult,
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, error::Error};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Json {
@@ -21,7 +21,7 @@ pub enum Json {
 }
 
 impl Json {
-    pub fn parse<'a>(input: &'a str) -> Result<Json, Box<dyn std::error::Error + 'a>> {
+    pub fn parse<'a>(input: &'a str) -> Result<Json, Box<dyn Error + 'a>> {
         let (_, (json, _)) = tuple((parse_object, eof))(input)?;
         Ok(json)
     }
@@ -65,9 +65,8 @@ fn parse_boolean(input: &str) -> IResult<&str, Json> {
 }
 
 fn parse_array(input: &str) -> IResult<&str, Json> {
-    let (input, items) = delimited(
-        ws(char('[')),
-        separated_list0(
+    fn parse_items(input: &str) -> IResult<&str, Vec<Json>> {
+        let (input, items) = separated_list0(
             ws(char(',')),
             alt((
                 parse_string,
@@ -77,15 +76,17 @@ fn parse_array(input: &str) -> IResult<&str, Json> {
                 parse_object,
                 parse_null,
             )),
-        ),
-        ws(char(']')),
-    )(input)?;
+        )(input)?;
+        Ok((input, items))
+    }
+
+    let (input, items) = delimited(ws(char('[')), parse_items, ws(char(']')))(input)?;
     Ok((input, Json::Array(items)))
 }
 
 fn parse_object(input: &str) -> IResult<&str, Json> {
     fn parse_kv(input: &str) -> IResult<&str, (String, Json)> {
-        let (input, k) = alphanumeric0(input)?;
+        let (input, k) = delimited(char('"'), alphanumeric0, char('"'))(input)?;
         let (input, _) = ws(char(':'))(input)?;
         let (input, v) = alt((
             parse_string,
