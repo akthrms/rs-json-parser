@@ -100,9 +100,9 @@ fn parse_object(input: &str) -> IResult<&str, Json> {
     }
 
     let (input, _) = ws(char('{'))(input)?;
-    let (input, kv) = separated_list0(ws(char(',')), parse_key_value)(input)?;
+    let (input, key_value_list) = separated_list0(ws(char(',')), parse_key_value)(input)?;
     let (input, _) = ws(char('}'))(input)?;
-    Ok((input, Json::Object(kv.into_iter().collect())))
+    Ok((input, Json::Object(key_value_list.into_iter().collect())))
 }
 
 fn parse_null(input: &str) -> IResult<&str, Json> {
