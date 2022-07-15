@@ -3,7 +3,6 @@ use nom::{
     bytes::complete::tag,
     character::complete::{alphanumeric0, char, digit1, multispace0},
     combinator::{eof, opt},
-    error::ParseError,
     multi::separated_list0,
     sequence::{delimited, tuple},
     IResult,
@@ -22,7 +21,7 @@ pub enum Json {
 
 impl Json {
     pub fn parse<'a>(input: &'a str) -> Result<Json, Box<dyn Error + 'a>> {
-        let (_, (json, _)) = tuple((parse_object, eof))(input)?;
+        let (_, (json, _)) = tuple((alt((parse_array, parse_object)), eof))(input)?;
         Ok(json)
     }
 }
@@ -67,7 +66,7 @@ fn parse_boolean(input: &str) -> IResult<&str, Json> {
 fn parse_array(input: &str) -> IResult<&str, Json> {
     fn parse_by_comma(input: &str) -> IResult<&str, Vec<Json>> {
         let (input, items) = separated_list0(
-            ws(char(',')),
+            ws_char(','),
             alt((
                 parse_string,
                 parse_number,
@@ -80,14 +79,14 @@ fn parse_array(input: &str) -> IResult<&str, Json> {
         Ok((input, items))
     }
 
-    let (input, items) = delimited(ws(char('[')), parse_by_comma, ws(char(']')))(input)?;
+    let (input, items) = delimited(ws_char('['), parse_by_comma, ws_char(']'))(input)?;
     Ok((input, Json::Array(items)))
 }
 
 fn parse_object(input: &str) -> IResult<&str, Json> {
     fn parse_key_value(input: &str) -> IResult<&str, (String, Json)> {
         let (input, k) = delimited(char('"'), alphanumeric0, char('"'))(input)?;
-        let (input, _) = ws(char(':'))(input)?;
+        let (input, _) = ws_char(':')(input)?;
         let (input, v) = alt((
             parse_string,
             parse_number,
@@ -99,9 +98,9 @@ fn parse_object(input: &str) -> IResult<&str, Json> {
         Ok((input, (k.to_string(), v)))
     }
 
-    let (input, _) = ws(char('{'))(input)?;
-    let (input, key_value_list) = separated_list0(ws(char(',')), parse_key_value)(input)?;
-    let (input, _) = ws(char('}'))(input)?;
+    let (input, _) = ws_char('{')(input)?;
+    let (input, key_value_list) = separated_list0(ws_char(','), parse_key_value)(input)?;
+    let (input, _) = ws_char('}')(input)?;
     Ok((input, Json::Object(key_value_list.into_iter().collect())))
 }
 
@@ -110,11 +109,6 @@ fn parse_null(input: &str) -> IResult<&str, Json> {
     Ok((input, Json::Null))
 }
 
-fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(
-    inner: F,
-) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
-where
-    F: Fn(&'a str) -> IResult<&'a str, O, E>,
-{
-    delimited(multispace0, inner, multispace0)
+fn ws_char<'a>(c: char) -> impl FnMut(&'a str) -> IResult<&'a str, char> {
+    delimited(multispace0, char(c), multispace0)
 }
