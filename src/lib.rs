@@ -1,16 +1,16 @@
-#![allow(dead_code)]
-
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{alphanumeric0, char, digit1},
-    combinator::opt,
-    sequence::delimited,
+    character::complete::{alphanumeric0, char, digit1, multispace0},
+    combinator::{eof, opt},
+    error::ParseError,
+    multi::separated_list0,
+    sequence::{delimited, tuple},
     IResult,
 };
 use std::collections::HashMap;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Json {
     String(String),
     Number(f64),
@@ -18,6 +18,13 @@ pub enum Json {
     Array(Vec<Json>),
     Object(HashMap<String, Json>),
     Null,
+}
+
+impl Json {
+    pub fn parse<'a>(input: &'a str) -> Result<Json, Box<dyn std::error::Error + 'a>> {
+        let (_, (json, _)) = tuple((parse_object, eof))(input)?;
+        Ok(json)
+    }
 }
 
 fn parse_string(input: &str) -> IResult<&str, Json> {
@@ -57,58 +64,56 @@ fn parse_boolean(input: &str) -> IResult<&str, Json> {
     alt((parse_true, parse_false))(input)
 }
 
+fn parse_array(input: &str) -> IResult<&str, Json> {
+    let (input, items) = delimited(
+        ws(char('[')),
+        separated_list0(
+            ws(char(',')),
+            alt((
+                parse_string,
+                parse_number,
+                parse_boolean,
+                parse_array,
+                parse_object,
+                parse_null,
+            )),
+        ),
+        ws(char(']')),
+    )(input)?;
+    Ok((input, Json::Array(items)))
+}
+
+fn parse_object(input: &str) -> IResult<&str, Json> {
+    fn parse_kv(input: &str) -> IResult<&str, (String, Json)> {
+        let (input, k) = alphanumeric0(input)?;
+        let (input, _) = ws(char(':'))(input)?;
+        let (input, v) = alt((
+            parse_string,
+            parse_number,
+            parse_boolean,
+            parse_array,
+            parse_object,
+            parse_null,
+        ))(input)?;
+        Ok((input, (k.to_string(), v)))
+    }
+
+    let (input, _) = ws(char('{'))(input)?;
+    let (input, kv) = separated_list0(ws(char(',')), parse_kv)(input)?;
+    let (input, _) = ws(char('}'))(input)?;
+    Ok((input, Json::Object(kv.into_iter().collect())))
+}
+
 fn parse_null(input: &str) -> IResult<&str, Json> {
     let (input, _) = tag("null")(input)?;
     Ok((input, Json::Null))
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{parse_boolean, parse_null, parse_number, parse_string, Json};
-
-    #[test]
-    fn test_parse_string() -> Result<(), Box<dyn std::error::Error>> {
-        let (_, json) = parse_string("\"aaa\"")?;
-        assert_eq!(json, Json::String("aaa".to_string()));
-
-        let (_, json) = parse_string("\"123\"")?;
-        assert_eq!(json, Json::String("123".to_string()));
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_parse_number() -> Result<(), Box<dyn std::error::Error>> {
-        let (_, json) = parse_number("123")?;
-        assert_eq!(json, Json::Number(123.0));
-
-        let (_, json) = parse_number("1.23")?;
-        assert_eq!(json, Json::Number(1.23));
-
-        let (_, json) = parse_number("-123")?;
-        assert_eq!(json, Json::Number(-123.0));
-
-        let (_, json) = parse_number("-1.23")?;
-        assert_eq!(json, Json::Number(-1.23));
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_parse_boolean() -> Result<(), Box<dyn std::error::Error>> {
-        let (_, json) = parse_boolean("true")?;
-        assert_eq!(json, Json::Boolean(true));
-
-        let (_, json) = parse_boolean("false")?;
-        assert_eq!(json, Json::Boolean(false));
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_parse_null() -> Result<(), Box<dyn std::error::Error>> {
-        let (_, json) = parse_null("null")?;
-        assert_eq!(json, Json::Null);
-        Ok(())
-    }
+fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(
+    inner: F,
+) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
+where
+    F: Fn(&'a str) -> IResult<&'a str, O, E>,
+{
+    delimited(multispace0, inner, multispace0)
 }
