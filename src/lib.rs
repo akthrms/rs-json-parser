@@ -116,11 +116,10 @@ fn ws_char<'a>(c: char) -> impl FnMut(&'a str) -> IResult<&'a str, char> {
 #[cfg(test)]
 mod tests {
     use crate::Json;
-    use std::error::Error;
 
     #[test]
-    fn test_parse() -> Result<(), Box<dyn Error>> {
-        let json = Json::parse(r#"{ "name": "Tanaka", "age": 26 }"#)?;
+    fn test_parse() {
+        let json = Json::parse(r#"{ "name": "Tanaka", "age": 26 }"#).unwrap();
 
         assert_eq!(
             json,
@@ -133,7 +132,5 @@ mod tests {
                 .collect()
             )
         );
-
-        Ok(())
     }
 }
