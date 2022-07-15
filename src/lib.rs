@@ -112,3 +112,28 @@ fn parse_null(input: &str) -> IResult<&str, Json> {
 fn ws_char<'a>(c: char) -> impl FnMut(&'a str) -> IResult<&'a str, char> {
     delimited(multispace0, char(c), multispace0)
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::Json;
+    use std::error::Error;
+
+    #[test]
+    fn test_parse() -> Result<(), Box<dyn Error>> {
+        let json = Json::parse(r#"{ "name": "Tanaka", "age": 26 }"#)?;
+
+        assert_eq!(
+            json,
+            Json::Object(
+                vec![
+                    ("name".to_string(), Json::String("Tanaka".to_string())),
+                    ("age".to_string(), Json::Number(26.0))
+                ]
+                .into_iter()
+                .collect()
+            )
+        );
+
+        Ok(())
+    }
+}
