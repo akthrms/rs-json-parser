@@ -116,6 +116,7 @@ fn ws_char<'a>(c: char) -> impl FnMut(&'a str) -> IResult<&'a str, char> {
 #[cfg(test)]
 mod tests {
     use crate::Json;
+    use std::collections::HashMap;
 
     #[test]
     fn test_parse() {
@@ -129,7 +130,7 @@ mod tests {
                     ("age".to_string(), Json::Number(26.0))
                 ]
                 .into_iter()
-                .collect()
+                .collect::<HashMap<String, Json>>()
             )
         );
     }

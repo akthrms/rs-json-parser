@@ -11,7 +11,7 @@ assert_eq!(
             ("age".to_string(), Json::Number(26.0))
         ]
         .into_iter()
-        .collect()
+        .collect::<HashMap<String, Json>>()
     )
 );
 ```
