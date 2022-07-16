@@ -2,7 +2,7 @@ use nom::{
     branch::alt,
     bytes::complete::tag,
     character::complete::{alphanumeric0, char, digit1, multispace0},
-    combinator::{eof, opt},
+    combinator::{eof, opt, recognize},
     multi::separated_list0,
     sequence::{delimited, tuple},
     IResult,
@@ -33,10 +33,8 @@ fn parse_string(input: &str) -> IResult<&str, Json> {
 
 fn parse_number(input: &str) -> IResult<&str, Json> {
     fn parse_float(input: &str) -> IResult<&str, f64> {
-        let (input, n1) = digit1(input)?;
-        let (input, _) = char('.')(input)?;
-        let (input, n2) = digit1(input)?;
-        Ok((input, format!("{}.{}", n1, n2).parse().unwrap()))
+        let (input, n) = recognize(tuple((digit1, char('.'), digit1)))(input)?;
+        Ok((input, n.parse().unwrap()))
     }
 
     fn parse_integer(input: &str) -> IResult<&str, f64> {
