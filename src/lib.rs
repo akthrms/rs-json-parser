@@ -133,5 +133,46 @@ mod tests {
                 .collect::<HashMap<String, Json>>()
             )
         );
+
+        let json = Json::parse(r#"[true, false, null]"#).unwrap();
+
+        assert_eq!(
+            json,
+            Json::Array(vec![Json::Boolean(true), Json::Boolean(false), Json::Null])
+        );
+
+        let json = Json::parse(
+            r#"{"persons": [{ "name": "Tanaka", "age": 26 }, { "name": "Yamada", "age": 28 }]}"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            json,
+            Json::Object(
+                vec![(
+                    "persons".to_string(),
+                    Json::Array(vec![
+                        Json::Object(
+                            vec![
+                                ("name".to_string(), Json::String("Tanaka".to_string())),
+                                ("age".to_string(), Json::Number(26.0)),
+                            ]
+                            .into_iter()
+                            .collect::<HashMap<String, Json>>(),
+                        ),
+                        Json::Object(
+                            vec![
+                                ("name".to_string(), Json::String("Yamada".to_string())),
+                                ("age".to_string(), Json::Number(28.0)),
+                            ]
+                            .into_iter()
+                            .collect::<HashMap<String, Json>>(),
+                        ),
+                    ])
+                ),]
+                .into_iter()
+                .collect::<HashMap<String, Json>>()
+            )
+        );
     }
 }
