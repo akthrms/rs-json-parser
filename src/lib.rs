@@ -7,7 +7,7 @@ use nom::{
     sequence::{delimited, tuple},
     IResult,
 };
-use std::{collections::HashMap, error::Error};
+use std::{collections::HashMap, error::Error, fmt};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Json {
@@ -109,6 +109,18 @@ fn parse_null(input: &str) -> IResult<&str, Json> {
 
 fn ws_char<'a>(c: char) -> impl FnMut(&'a str) -> IResult<&'a str, char> {
     delimited(multispace0, char(c), multispace0)
+}
+
+impl fmt::Display for Json {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Json::String(s) => write!(f, "\"{}\"", s),
+            Json::Number(n) => write!(f, "{}", n),
+            Json::Boolean(b) => write!(f, "{}", b),
+            Json::Null => write!(f, "null"),
+            _ => unimplemented!(),
+        }
+    }
 }
 
 #[cfg(test)]
