@@ -117,8 +117,24 @@ impl fmt::Display for Json {
             Json::String(s) => write!(f, "\"{}\"", s),
             Json::Number(n) => write!(f, "{}", n),
             Json::Boolean(b) => write!(f, "{}", b),
+            Json::Array(items) => write!(
+                f,
+                "[{}]",
+                items
+                    .iter()
+                    .map(|item| format!("{}", item))
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
+            Json::Object(obj) => write!(
+                f,
+                "{{{}}}",
+                obj.iter()
+                    .map(|(k, v)| format!("\"{}\": {}", k, v))
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
             Json::Null => write!(f, "null"),
-            _ => unimplemented!(),
         }
     }
 }
@@ -130,7 +146,7 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let json = Json::parse(r#"{ "name": "Tanaka", "age": 26 }"#).unwrap();
+        let json = Json::parse(r#"{"name": "Tanaka", "age": 26}"#).unwrap();
 
         assert_eq!(
             json,
@@ -152,7 +168,7 @@ mod tests {
         );
 
         let json = Json::parse(
-            r#"{"persons": [{ "name": "Tanaka", "age": 26 }, { "name": "Yamada", "age": 28 }]}"#,
+            r#"{ "persons": [{"name": "Tanaka", "age": 26}, {"name": "Yamada", "age": 28}]}"#,
         )
         .unwrap();
 
@@ -184,5 +200,51 @@ mod tests {
                 .collect::<HashMap<String, Json>>()
             )
         );
+    }
+
+    #[test]
+    fn test_display() {
+        let json = Json::Object(
+            vec![
+                ("name".to_string(), Json::String("Tanaka".to_string())),
+                ("age".to_string(), Json::Number(26.0)),
+            ]
+            .into_iter()
+            .collect::<HashMap<String, Json>>(),
+        );
+
+        assert_eq!(Json::parse(format!("{}", json).as_str()).unwrap(), json);
+
+        let json = Json::Array(vec![Json::Boolean(true), Json::Boolean(false), Json::Null]);
+
+        assert_eq!(Json::parse(format!("{}", json).as_str()).unwrap(), json);
+
+        let json = Json::Object(
+            vec![(
+                "persons".to_string(),
+                Json::Array(vec![
+                    Json::Object(
+                        vec![
+                            ("name".to_string(), Json::String("Tanaka".to_string())),
+                            ("age".to_string(), Json::Number(26.0)),
+                        ]
+                        .into_iter()
+                        .collect::<HashMap<String, Json>>(),
+                    ),
+                    Json::Object(
+                        vec![
+                            ("name".to_string(), Json::String("Yamada".to_string())),
+                            ("age".to_string(), Json::Number(28.0)),
+                        ]
+                        .into_iter()
+                        .collect::<HashMap<String, Json>>(),
+                    ),
+                ]),
+            )]
+            .into_iter()
+            .collect::<HashMap<String, Json>>(),
+        );
+
+        assert_eq!(Json::parse(format!("{}", json).as_str()).unwrap(), json);
     }
 }
