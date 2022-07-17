@@ -168,7 +168,7 @@ mod tests {
         );
 
         let json = Json::parse(
-            r#"{ "persons": [{"name": "Tanaka", "age": 26}, {"name": "Yamada", "age": 28}]}"#,
+            r#"{"persons": [{"name": "Tanaka", "age": 26}, {"name": "Yamada", "age": 28}]}"#,
         )
         .unwrap();
 
