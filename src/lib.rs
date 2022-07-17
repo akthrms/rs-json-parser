@@ -62,8 +62,8 @@ fn parse_boolean(input: &str) -> IResult<&str, Json> {
 }
 
 fn parse_array(input: &str) -> IResult<&str, Json> {
-    fn parse_by_comma(input: &str) -> IResult<&str, Vec<Json>> {
-        let (input, items) = separated_list0(
+    fn parse_json_list(input: &str) -> IResult<&str, Vec<Json>> {
+        let (input, json_list) = separated_list0(
             ws_char(','),
             alt((
                 parse_string,
@@ -74,11 +74,11 @@ fn parse_array(input: &str) -> IResult<&str, Json> {
                 parse_null,
             )),
         )(input)?;
-        Ok((input, items))
+        Ok((input, json_list))
     }
 
-    let (input, items) = delimited(ws_char('['), parse_by_comma, ws_char(']'))(input)?;
-    Ok((input, Json::Array(items)))
+    let (input, json_list) = delimited(ws_char('['), parse_json_list, ws_char(']'))(input)?;
+    Ok((input, Json::Array(json_list)))
 }
 
 fn parse_object(input: &str) -> IResult<&str, Json> {
@@ -117,19 +117,20 @@ impl fmt::Display for Json {
             Json::String(s) => write!(f, "\"{}\"", s),
             Json::Number(n) => write!(f, "{}", n),
             Json::Boolean(b) => write!(f, "{}", b),
-            Json::Array(items) => write!(
+            Json::Array(json_list) => write!(
                 f,
                 "[{}]",
-                items
+                json_list
                     .iter()
                     .map(|item| format!("{}", item))
                     .collect::<Vec<String>>()
                     .join(", ")
             ),
-            Json::Object(obj) => write!(
+            Json::Object(json_map) => write!(
                 f,
                 "{{{}}}",
-                obj.iter()
+                json_map
+                    .iter()
                     .map(|(k, v)| format!("\"{}\": {}", k, v))
                     .collect::<Vec<String>>()
                     .join(", ")
