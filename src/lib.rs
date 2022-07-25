@@ -42,8 +42,7 @@ fn number(input: &str) -> IResult<&str, Json> {
         Ok((input, value.parse().unwrap()))
     }
 
-    let (input, unary_minus) = opt(char('-'))(input)?;
-    let (input, value) = alt((float, integer))(input)?;
+    let (input, (unary_minus, value)) = tuple((opt(char('-')), alt((float, integer))))(input)?;
     Ok((
         input,
         Json::Number(if unary_minus.is_some() { -value } else { value }),
@@ -70,19 +69,23 @@ fn array(input: &str) -> IResult<&str, Json> {
 
 fn object(input: &str) -> IResult<&str, Json> {
     fn key_value(input: &str) -> IResult<&str, (String, Json)> {
-        let (input, key) = delimited(
-            char('"'),
-            recognize(tuple((alpha1, many0(alphanumeric1)))),
-            char('"'),
-        )(input)?;
-        let (input, _) = ws_char(':')(input)?;
-        let (input, value) = alt((string, number, boolean, array, object, null))(input)?;
+        let (input, (key, _, value)) = tuple((
+            delimited(
+                char('"'),
+                recognize(tuple((alpha1, many0(alphanumeric1)))),
+                char('"'),
+            ),
+            ws_char(':'),
+            alt((string, number, boolean, array, object, null)),
+        ))(input)?;
         Ok((input, (key.to_string(), value)))
     }
 
-    let (input, _) = ws_char('{')(input)?;
-    let (input, key_value_list) = separated_list0(ws_char(','), key_value)(input)?;
-    let (input, _) = ws_char('}')(input)?;
+    let (input, key_value_list) = delimited(
+        ws_char('{'),
+        separated_list0(ws_char(','), key_value),
+        ws_char('}'),
+    )(input)?;
     Ok((input, Json::Object(key_value_list.into_iter().collect())))
 }
 
