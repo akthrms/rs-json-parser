@@ -32,20 +32,17 @@ fn string(input: &str) -> IResult<&str, Json> {
 }
 
 fn number(input: &str) -> IResult<&str, Json> {
-    fn float(input: &str) -> IResult<&str, f64> {
-        let (input, value) = recognize(tuple((digit1, char('.'), digit1)))(input)?;
-        Ok((input, value.parse().unwrap()))
-    }
-
-    fn integer(input: &str) -> IResult<&str, f64> {
-        let (input, value) = digit1(input)?;
-        Ok((input, value.parse().unwrap()))
-    }
-
-    let (input, (unary_minus, value)) = tuple((opt(char('-')), alt((float, integer))))(input)?;
+    let (input, (unary_minus, value)) = tuple((
+        opt(char('-')),
+        alt((recognize(tuple((digit1, char('.'), digit1))), digit1)),
+    ))(input)?;
     Ok((
         input,
-        Json::Number(if unary_minus.is_some() { -value } else { value }),
+        Json::Number(if unary_minus.is_some() {
+            -value.parse::<f64>().unwrap()
+        } else {
+            value.parse::<f64>().unwrap()
+        }),
     ))
 }
 
