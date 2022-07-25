@@ -1,13 +1,23 @@
+use anyhow;
 use nom::{
     branch::alt,
     bytes::complete::tag,
     character::complete::{alpha1, alphanumeric0, alphanumeric1, char, digit1, multispace0},
     combinator::{eof, map, opt, recognize},
+    error::{Error, ErrorKind},
     multi::{many0, separated_list0},
     sequence::{delimited, tuple},
-    IResult,
+    Finish, IResult,
 };
-use std::{collections::HashMap, error::Error, fmt};
+use std::{collections::HashMap, fmt};
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+#[error("parse error: {{ input: `{}`, code: `{}` }}", input, code.description())]
+pub struct JsonParseError {
+    input: String,
+    code: ErrorKind,
+}
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Json {
@@ -20,9 +30,15 @@ pub enum Json {
 }
 
 impl Json {
-    pub fn parse<'a>(input: &'a str) -> Result<Json, Box<dyn Error + 'a>> {
-        let (_, (json, _)) = tuple((alt((array, object)), eof))(input)?;
-        Ok(json)
+    pub fn parse(input: &str) -> anyhow::Result<Json> {
+        match tuple((alt((array, object)), eof))(input).finish() {
+            Ok((_, (json, _))) => Ok(json),
+            Err(Error { input, code }) => Err(JsonParseError {
+                input: input.to_string(),
+                code,
+            }
+            .into()),
+        }
     }
 }
 
