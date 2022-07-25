@@ -2,7 +2,7 @@ use nom::{
     branch::alt,
     bytes::complete::tag,
     character::complete::{alpha1, alphanumeric0, alphanumeric1, char, digit1, multispace0},
-    combinator::{eof, opt, recognize},
+    combinator::{eof, map, opt, recognize},
     multi::{many0, separated_list0},
     sequence::{delimited, tuple},
     IResult,
@@ -52,35 +52,35 @@ fn boolean(input: &str) -> IResult<&str, Json> {
 }
 
 fn array(input: &str) -> IResult<&str, Json> {
-    fn json_list(input: &str) -> IResult<&str, Vec<Json>> {
-        let (input, json_list) = separated_list0(
+    let (input, json_list) = delimited(
+        ws_char('['),
+        separated_list0(
             ws_char(','),
             alt((string, number, boolean, array, object, null)),
-        )(input)?;
-        Ok((input, json_list))
-    }
-
-    let (input, json_list) = delimited(ws_char('['), json_list, ws_char(']'))(input)?;
+        ),
+        ws_char(']'),
+    )(input)?;
     Ok((input, Json::Array(json_list)))
 }
 
 fn object(input: &str) -> IResult<&str, Json> {
-    fn key_value(input: &str) -> IResult<&str, (String, Json)> {
-        let (input, (key, _, value)) = tuple((
-            delimited(
-                char('"'),
-                recognize(tuple((alpha1, many0(alphanumeric1)))),
-                char('"'),
-            ),
-            ws_char(':'),
-            alt((string, number, boolean, array, object, null)),
-        ))(input)?;
-        Ok((input, (key.to_string(), value)))
-    }
-
     let (input, key_value_list) = delimited(
         ws_char('{'),
-        separated_list0(ws_char(','), key_value),
+        separated_list0(
+            ws_char(','),
+            map(
+                tuple((
+                    delimited(
+                        char('"'),
+                        recognize(tuple((alpha1, many0(alphanumeric1)))),
+                        char('"'),
+                    ),
+                    ws_char(':'),
+                    alt((string, number, boolean, array, object, null)),
+                )),
+                |(key, _, value)| (key.to_string(), value),
+            ),
+        ),
         ws_char('}'),
     )(input)?;
     Ok((input, Json::Object(key_value_list.into_iter().collect())))
